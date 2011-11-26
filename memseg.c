@@ -6,7 +6,7 @@
 #include <assert.h>
 
 struct Mem{
-    UArray_T* mappedIDs;
+    UM_Word** mappedIDs;
     int numMapped;
     int mappedLength;
     UM_Word* unmappedIDs;
@@ -23,16 +23,19 @@ Mem* newMem(){
     return mem;
 }
 
+static inline int adjustForSizeIndex(int offset) {
+    return offset + 1;
+}
+
 /*
  * Creates a copy of the segment at the specified ID and returns the segment
  */
-static UArray_T segmentCopy(Mem* memorySegments, UM_Word ID){
-    UArray_T segment = memorySegments->mappedIDs[ID];
-    UArray_T copy = UArray_new(UArray_length(segment), sizeof(UM_Word));
+static UM_Word* segmentCopy(Mem* memorySegments, UM_Word ID){
+    UM_Word* segment = memorySegments->mappedIDs[ID];
+    UM_Word* copy = malloc(sizeof(UM_Word)*segment[0]);
 
-    for(int i = 0; i < UArray_length(segment); i++){
-        UM_Word* value = UArray_at(copy, i);
-        *value = *(UM_Word*)UArray_at(segment, i);
+    for(UM_Word i = 0; i < segment[0]; i++){
+        copy[i] = segment[i];
     }
     return copy;
 }
@@ -41,27 +44,26 @@ static UArray_T segmentCopy(Mem* memorySegments, UM_Word ID){
  * Removes memorySegment 0 and copies the segment at ID to 0
  */
 void loadSegment(Mem* memorySegments, UM_Word ID){
-    UArray_T copy = segmentCopy(memorySegments, ID);
+    UM_Word* copy = segmentCopy(memorySegments, ID);
     unmapSegment(memorySegments, 0);
-    mapSegment(memorySegments, UArray_length(copy));
-    UArray_T toFree = memorySegments->mappedIDs[0];
+    mapSegment(memorySegments, copy[0]);
+    free(memorySegments->mappedIDs[0]);
     memorySegments->mappedIDs[0] = copy;
-    UArray_free(&toFree);
 }
 
 /*
  * Returns the value of the word stored at the given ID and offset.
  */
 UM_Word getWord(Mem* memorySegments, UM_Word ID, UM_Word offset){
-    return *(UM_Word*)UArray_at((UArray_T)memorySegments->mappedIDs[ID], 
-                                offset);
+    offset = adjustForSizeIndex(offset);
+    return memorySegments->mappedIDs[ID][offset];
 }
 
 /*
  * Returns the length of the mapepd segment stored at the ID
  */
 int segmentLength(Mem* memorySegments, UM_Word ID){
-    return UArray_length((UArray_T)memorySegments->mappedIDs[ID]);
+    return memorySegments->mappedIDs[ID][0] - 1;
 }
 
 /*
@@ -72,7 +74,7 @@ static void resizeMapped(Mem* memorySegments) {
     int length = memorySegments->mappedLength;
     memorySegments->mappedLength = length * 2;
 
-    UArray_T* temp = malloc(sizeof(UArray_T)*memorySegments->mappedLength);
+    UM_Word** temp = malloc(sizeof(UM_Word*)*memorySegments->mappedLength);
     for(int i = 0; i < length; i++) {
         temp[i] = memorySegments->mappedIDs[i];
     }
@@ -109,7 +111,7 @@ static void resizeUnmapped(Mem* memorySegments) {
  */
 void instantiateMem(Mem* mem, int length) {
     assert(length > 0);
-    mem->mappedIDs = malloc(sizeof(UArray_T)*length);
+    mem->mappedIDs = malloc(sizeof(UM_Word*)*length);
     mem->numMapped = 0;
     mem->mappedLength = length;
 
@@ -135,12 +137,14 @@ UM_Word mapSegment(Mem* memorySegments, int length) {
         resizeMapped(memorySegments);
     }
 
-    UArray_T segment = UArray_new(length, sizeof(UM_Word));
+    length = adjustForSizeIndex(length);
+    UM_Word* segment = malloc(sizeof(UM_Word)*length);
     
+    // Storing the length of each segment as the first index
+    segment[0] = length;
     // Initializing each UM_Word in the memory segment to 0
-    for(UM_Word i = 0; i < (UM_Word)length; i++) {
-        UM_Word* elem = UArray_at(segment, i);
-        *elem = 0;
+    for(int i = 1; i < length; i++) {
+        segment[i] = 0;
     }
 
     UM_Word index;
@@ -162,9 +166,9 @@ UM_Word mapSegment(Mem* memorySegments, int length) {
  * with the given ID
  */
 void unmapSegment(Mem* memorySegments, UM_Word index) {
-    UArray_T segmentID = memorySegments->mappedIDs[index];
+    UM_Word* segmentID = memorySegments->mappedIDs[index];
     memorySegments->mappedIDs[index] = NULL;
-    UArray_free(&segmentID);
+    free(segmentID);
     
     if(memorySegments->numRemapped == memorySegments->unmappedLength){
         resizeUnmapped(memorySegments);
@@ -181,7 +185,8 @@ void unmapSegment(Mem* memorySegments, UM_Word index) {
  */
 UM_Word segmentedLoad(Mem* memorySegments, UM_Word ID, int offset){
   assert(memorySegments->mappedIDs[ID]);
-  return *(UM_Word*)UArray_at((UArray_T)memorySegments->mappedIDs[ID], offset);
+  offset = adjustForSizeIndex(offset);
+  return memorySegments->mappedIDs[ID][offset];
 }
 
 /*
@@ -190,11 +195,11 @@ UM_Word segmentedLoad(Mem* memorySegments, UM_Word ID, int offset){
  */
 void segmentedStore(Mem* memorySegments, UM_Word ID, int offset, UM_Word
                        value){
-    UArray_T temp = memorySegments->mappedIDs[ID];
+    UM_Word* temp = memorySegments->mappedIDs[ID];
     assert(temp);
-    UM_Word* word = UArray_at(temp, offset);
-    assert(word);
-    *word = value;
+    offset = adjustForSizeIndex(offset);
+    assert((UM_Word)offset < memorySegments->mappedIDs[ID][0]);
+    memorySegments->mappedIDs[ID][offset] = value;
 }
 
 /*
@@ -202,9 +207,9 @@ void segmentedStore(Mem* memorySegments, UM_Word ID, int offset, UM_Word
  */ 
 void freeMem(Mem* memorySegments) {
     for(int i = 0; i < memorySegments->mappedLength; i++) {
-        UArray_T seg = memorySegments->mappedIDs[i];
+        UM_Word* seg = memorySegments->mappedIDs[i];
         if(seg != NULL) {
-            UArray_free(&seg);
+            free(seg);
         }
     }
     free(memorySegments->mappedIDs);
