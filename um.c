@@ -60,7 +60,8 @@ void mapProgram(FILE* program) {
 
     int c = getc(program);
     while(c != EOF) {
-        UM_Word temp = Bitpack_newu(temp, 8, 24, c);
+        UM_Word temp = 0;
+        temp = Bitpack_newu(temp, 8, 24, c);
         for(int bit = 16; bit >=0; bit -=8){
             int b = getc(program);
             temp = Bitpack_newu(temp, 8, bit, b);

@@ -16,11 +16,11 @@ CIILIBS=`pkg-config --libs cii40`
 
 # compile and link against course software and netpbm library
 CFLAGS="-I. -I/comp/40/include $CIIFLAGS"
-LIBS="-lbitpack -lum-dis $CIILIBS"
+LIBS="-lcii40-O2 -lbitpack -lum-dis $CIILIBS"
 LFLAGS="-L/comp/40/lib64"
 
 # these flags max out warnings and debug info
-FLAGS="-g -O0 -Wall -Wextra -Werror -Wfatal-errors -std=c99 -pedantic"
+FLAGS="-g -O2 -Wall -Wextra -Werror -Wfatal-errors -std=c99 -pedantic"
 #FLAGS="-g -O0 -std=c99 "
 
 rm -f *.o  # make sure no object files are left hanging around
