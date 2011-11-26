@@ -11,6 +11,7 @@ static Mem* memorySegments;
 static int programCounter;
 static int INITIAL_SET_SIZE = 5000; // Number of memory segment IDs
 static int PROGRAM_HINT = 500;     // Number of program instructions
+static int numInstructions;
 
 Except_T Bit_Overflow = { "Overflow packing bits" };
 
@@ -84,13 +85,12 @@ void build_and_execute_um(FILE* program){
 
     mapProgram(program);
     programCounter = 0;
-    int numInstr = 0;
+    numInstructions = segmentLength(memorySegments, 0);
 
-    while(programCounter < segmentLength(memorySegments, 0)){
+    while(programCounter < numInstructions){
         UM_Word instruction = getWord(memorySegments, 0, programCounter);
         Instruction instr = parseInstruction(instruction);
         execute_instruction(instr);
-        numInstr++;
         if(instr.op == HALT) break;
     }
 
@@ -209,10 +209,11 @@ void execute_instruction(Instruction instr){
                 loadSegment(memorySegments, ID);
 
             programCounter = registers[instr.reg3];
+            numInstructions = segmentLength(memorySegments, 0);
             break;
         }
         case LOADVAL:{
-            loadValue(registers, instr.reg1, instr.value);
+            registers[instr.reg1] = instr.value;
             programCounter++;
             break;
         }

@@ -87,17 +87,6 @@ void bitwiseNAND(UM_Word* registers, UM_Word result, UM_Word val1,
 }
 
 /*
- * Load the value passed into the register $r[reg]. Called with command 13.
- */
-void loadValue(UM_Word* registers, UM_Word reg, UM_Word value) {
-    assert(registers);
-    if(reg >> RegIDWidth != 0) {
-        RAISE(Register_Invalid);
-    }
-    registers[reg] = value;
-}
-
-/*
  * Reads from std input and stores in the register $r[reg]. Called with
  * command 11.
  */

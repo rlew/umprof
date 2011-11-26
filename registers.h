@@ -15,7 +15,6 @@ void division(UM_Word* registers, UM_Word quotient, UM_Word numerator,
                 UM_Word denominator);
 void bitwiseNAND(UM_Word* registers, UM_Word result, UM_Word val1,
                 UM_Word val2);
-void loadValue(UM_Word* registers, UM_Word reg, UM_Word value);
 void input(UM_Word* registers, UM_Word reg);
 void output(UM_Word* registers, UM_Word reg);
 

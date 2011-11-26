@@ -58,7 +58,6 @@ UM_Word getWord(Mem* memorySegments, UM_Word ID, UM_Word offset){
     offset = adjustForSizeIndex(offset);
     return memorySegments->mappedIDs[ID][offset];
 }
-
 /*
  * Returns the length of the mapepd segment stored at the ID
  */
