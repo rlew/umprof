@@ -1,6 +1,8 @@
 #include "um.h"
 #include "mem.h"
-#include "bitpack.h"
+#include <inttypes.h>
+#include <assert.h>
+#include "except.h"
 
 /* Registers and memory statically defined upon creation of the machine. */
 #define numRegisters 8
@@ -9,6 +11,49 @@ static Mem* memorySegments;
 static int programCounter;
 static int INITIAL_SET_SIZE = 5000; // Number of memory segment IDs
 static int PROGRAM_HINT = 500;     // Number of program instructions
+
+Except_T Bit_Overflow = { "Overflow packing bits" };
+
+static inline uint64_t shl(uint64_t word, unsigned bits) {
+  assert(bits <= 64);
+  if (bits == 64)
+    return 0;
+  else
+    return word << bits;
+}
+
+static inline uint64_t shr(uint64_t word, unsigned bits) { // shift R logical
+  assert(bits <= 64);
+  if (bits == 64)
+    return 0;
+  else
+    return word >> bits;
+}
+
+static inline int Bitpack_fitsu(uint64_t n, unsigned width) {
+  if (width >= 64)
+    return 1;
+  /* thanks to Jai Karve and John Bryan */
+  return shr(n, width) == 0; // clever shortcut instead of 2 shifts
+}
+
+static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, 
+                                    unsigned lsb, uint64_t value) {
+  unsigned hi = lsb + width; // one beyond the most significant bit
+  assert(hi <= 64);
+  if (!Bitpack_fitsu(value, width))
+    RAISE(Bit_Overflow);
+  return shl(shr(word, hi), hi)              // high part
+       | shr(shl(word, 64 - lsb), 64 - lsb)  // low part
+       | (value << lsb);                     // new part
+}
+
+static inline uint64_t Bitpack_getu(uint64_t word, unsigned width, 
+                                    unsigned lsb) {
+  unsigned hi = lsb + width; // one beyond the most significant bit
+  assert(hi <= 64);
+  return shr(shl(word, 64 - hi), 64 - width); // different type of right shift
+}
 
 /*
  * Returns a Instruction with a opcode and filled registers.

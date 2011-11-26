@@ -113,7 +113,7 @@ void instantiateMem(Mem* mem, int length) {
     mem->numMapped = 0;
     mem->mappedLength = length;
 
-    mem->unmappedLength = length/10;
+    mem->unmappedLength = length/2;
     mem->numRemapped = 0;
     mem->unmappedIDs = malloc(sizeof(UM_Word)*mem->unmappedLength);
     
